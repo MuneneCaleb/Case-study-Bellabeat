@@ -1,0 +1,365 @@
+#Introduction 
+#Bellabeat, a high-tech company founded in 2013 by Urška Sršen and Sando Mur, is a trailblazer 
+#in manufacturing health-focused smart products for women. Renowned for seamlessly merging artistic
+#design with cutting-edge technology, Bellabeat offers an array of devices, including the Leaf tracker
+#and Time watch. In this project, we delve into the role of a junior data analyst within Bellabeat's 
+#marketing analytics team. The primary objective is to analyze smart device usage  fitness data, particularly 
+#focusing on the Bellabeat app. This app serves as a nexus, providing users with holistic health data and insights, 
+#connecting seamlessly to Bellabeat's line of smart wellness products. 
+#Join us on this journey to unlock growth opportunities through data analysis.
+
+# Step 1: ASk
+
+#Identify the business task
+
+#Business Objective
+#Analyze patterns in the usage of non-Bellabeat smart devices by consumers and leverage 
+#these insights to inform Bellabeat's marketing strategy.
+
+#Stakeholders include:
+  
+#Urška Sršen: Co-founder and Chief Creative Officer of Bellabeat.
+#Sando Mur: Co-founder of Bellabeat and a key member of the executive team.
+#Bellabeat Marketing Analytics Team: A dedicated group of data analysts responsible for
+#collecting, analyzing, and reporting data critical to guiding Bellabeat's marketing strategy.
+
+#Step 2 : Prepare
+  
+#Dataset Utilized:
+#Our case study relies on the FitBit Fitness Tracker Data, sourced from Kaggle
+#and made accessible through Mobius.
+
+#Assessing Data Credibility:
+#The dataset under scrutiny is derived from public data originating from FitBit
+#Fitness Tracker Data. Comprising information from thirty Fitbit users, the dataset 
+#encompasses minute-level details regarding physical activity, heart rate, and sleep
+#monitoring. Notably, it is a comprehensive database organized into multiple
+#tables, each focusing on distinct aspects of the device's data. This dataset 
+#offers substantial insights into user behavior, presenting a rich source of 
+#information for analysis.
+
+#Step 3 :Process
+#For the analysis, I will concentrate my efforts in R, choosing it for its 
+#accessibility, the volume of available data, and its capability to generate data 
+#visualizations.
+
+#Loading Libraries:
+
+#In this step, we load the essential libraries to enable the execution of 
+#subsequent tasks in the analysis..
+
+pacman::p_load(
+  tidyverse,
+  rio,
+  lubridate
+)
+
+
+ #Importing Datasets:
+
+#This step involves bringing the datasets into the analysis environment for 
+#further examination and manipulation.
+
+
+daily_activity <- import("dailyActivity_merged.csv")
+sleep_day <-  import("sleepDay_merged.csv")
+steps_hourly <- import("hourlySteps_merged.csv")
+
+#Previewing Our Datasets:
+  
+#In this stage, we take an initial look at our datasets to gain a preliminary
+#understanding of their contents and structure.
+
+head(daily_activity)
+glimpse(daily_activity)
+colnames(daily_activity)
+
+
+head(sleep_day)
+glimpse(sleep_day)
+colnames(sleep_day)
+
+
+# Using base R functions to find duplicate values
+duplicates_activity <- daily_activity[duplicated(daily_activity), ]
+
+duplicate_counts_activity<- table(daily_activity[duplicated(daily_activity), ])
+
+duplicates_activity
+
+duplicate_counts_activity
+
+
+duplicates_sleep<- sleep_day[duplicated(sleep_day), ]
+
+duplicate_counts_sleep <- table(sleep_day[duplicated(sleep_day), ])
+
+duplicates_sleep 
+
+duplicate_counts_sleep 
+
+
+
+#Removing duplicates 
+
+sleep_day <- sleep_day %>%
+  distinct() %>%
+  drop_na()
+
+
+
+
+#Cleaning and Renaming Columns:
+  
+#Our objective is to guarantee uniformity in column names, adhering to the correct 
+#syntax and format across all datasets. This standardization is crucial as we plan 
+#to merge these datasets in subsequent steps. To achieve consistency, we are transforming 
+#all column names to lowercase, ensuring seamless integration and analysis in our workflow.
+
+daily_activity <- daily_activity %>% 
+  janitor::clean_names()
+
+    colnames(daily_activity)
+    
+       
+sleep_day <- sleep_day %>% 
+  janitor::clean_names()
+    
+    colnames(sleep_day)
+    
+   
+ steps_hourly <- steps_hourly%>% 
+     janitor::clean_names()
+   
+  ## Understanding some summary statistics
+   #How many distinct participants are present in each dataframe? It seems that the 
+   #daily activity dataset may have a larger number of participants compared to the 
+   #sleep dataset.
+   
+   n_distinct(daily_activity$id)
+   n_distinct(sleep_day$id)
+   
+#The summary statistics provide insights into the physical activity patterns of the sampled 
+#population. Notably, the minimum total_steps of 0 suggests instances of complete inactivity, 
+#while the maximum of 36019 indicates a subgroup with exceptionally high activity levels. 
+#The median total_steps at 7406 reflects a central tendency, illustrating that half of the 
+#population took fewer steps. A similar pattern is observed for total_distance, with a median 
+#of 5.245 and a maximum of 28.030, indicating variability in distances covered. 
+#Sedentary_minutes present a skewed distribution, with a median of 1057.5 and a right-skewed
+#tail extending to the maximum of 1440, signifying that a portion of the population exhibits
+#prolonged sedentary behavior. The mean values provide additional context, with a mean total_steps 
+#of 7638, mean total_distance of 5.490, and mean sedentary_minutes of 991.2. 
+   
+   daily_activity %>%  
+     select(total_steps,
+            total_distance,
+            sedentary_minutes) %>%
+     summary()
+#The summary statistics pertain to sleep metrics within the studied population. 
+#The data includes the total_sleep_records, total_minutes_asleep, and total_time_in_bed. 
+#Notably, the minimum values suggest a presence of individuals with a single sleep record, 
+#spending a minimum of 58 minutes asleep and 61 minutes in bed. The maximum values indicate 
+#instances of up to three sleep records, with a maximum of 796 minutes spent asleep and 961 
+#minutes in bed. The mean values provide central tendencies, with an average of 1.12 sleep 
+#records, 419.2 minutes asleep, and 458.5 minutes in bed.
+   
+   sleep_day %>%  
+     select(total_sleep_records,
+            total_minutes_asleep,
+            total_time_in_bed) %>%
+     summary()
+   
+#Converting Date as Character to Date
+   
+#In R, it's common to encounter dates represented as character strings. To perform 
+#date-related operations, it's essential to convert these strings to Date objects. 
+#Here ,we'll explore how to do this using the lubridate package .
+  
+daily_activity$activity_date <- mdy(daily_activity$activity_date)
+glimpse(daily_activity)
+
+
+## Plotting a few explorations
+
+daily_activity %>% 
+  ggplot(aes(total_steps, sedentary_minutes))+
+  geom_point()+
+  geom_smooth()
+
+sleep_day %>% 
+  ggplot(aes(total_minutes_asleep, total_time_in_bed))+
+  geom_point()+
+  geom_smooth()
+
+daily_activity %>% 
+  ggplot(aes(total_steps, calories))+
+  geom_point(color = "purple")+
+  geom_smooth(color = "red")+
+  theme_get()+
+  labs(title = "Total steps Vs Calories ")
+
+## Merging these two datasets together
+
+new_df <- merge(daily_activity, sleep_day, by = "id", all = TRUE)
+
+
+n_distinct(new_df$id)
+
+view(new_df)
+#The data reveals how much people walk (total_steps) and the corresponding calories
+#they burn. Some individuals didn't walk at all during the recorded time, while others 
+#were highly active, taking up to 36,019 steps. On average, people took around 7,638 steps.
+#The correlation analysis between total steps and calories burned shows a positive 
+#connection (correlation coefficient of 0.451), indicating that, in general, as people 
+#take more steps, they tend to burn more calories. This suggests a beneficial relationship
+#between physical activity and energy expenditure, emphasizing the importance of incorporating 
+#more steps into daily routines for overall health.
+
+new_df%>% 
+  ggplot(aes(total_steps, calories))+
+  geom_point(color = "blue")+
+  geom_smooth(color = "black")+
+  theme_get()+
+  labs(title = "Total steps Vs Calories ")+
+  annotate(
+    geom = "curve", x = 25000, y = 4900, color = "red", xend = 15000, yend = 2780, 
+    curvature = 0.3, arrow = arrow(length = unit(2, "mm")))+
+      
+   annotate(geom = "text", x = 25000, y = 4900, color = "red" ,label = "italic(R) ^ 2 == 0.45", hjust = "left",
+           parse = TRUE)
+
+ 
+
+#when exactly are users more active 
+
+head(steps_hourly)
+
+glimpse(steps_hourly)
+
+steps_hourly$activity_hour=as.POSIXct(steps_hourly$activity_hour, format="%m/%d/%Y %I:%M:%S %p", tz=Sys.timezone())
+steps_hourly$time <- format(steps_hourly$activity_hour, format = "%H:%M:%S")
+steps_hourly$date <- format(steps_hourly$activity_hour, format = "%m/%d/%y")
+
+steps_hourly_new<- steps_hourly%>%
+group_by(time) %>%
+drop_na() %>%
+summarise(mean_total_steps = mean(step_total))
+
+steps_hourly_new %>%
+ggplot(aes(time, mean_total_steps))+
+geom_col()
+
+steps_hourly_new %>%
+ggplot(aes(time, mean_total_steps))+
+geom_col()+
+  labs(title = "Steps taken every hour of the day", x="Time", y="Steps")+
+  theme_get()+
+  theme(axis.text.x = element_text(angle = 45,vjust = 0.5, hjust = 1))+
+  annotate("segment", x = 8.5, xend = 20.5, y = 610, yend = 610,color = "blue",
+           arrow = arrow(ends = "both", angle = 90,length = unit(.2,"cm")))+
+ annotate("rect", xmin = 12.5, xmax = 15.5, ymin = 0, ymax = 650,
+   alpha = .3,fill = "red")+
+  annotate("rect", xmin = 17.5, xmax = 20.5, ymin = 0, ymax = 650,
+           alpha = .3,fill = "red")
+  
+
+steps_hourly_new %>%
+  ggplot(aes(time, mean_total_steps))+
+  geom_col()+
+  labs(title = "Steps taken every hour of the day", x="Time", y="Steps")+
+  theme_get()+
+  theme(axis.text.x = element_text(angle = 45,vjust = 0.5, hjust = 1))+
+  annotate("segment", x = 12.5, xend = 15.4, y = 570, yend = 570,color = "blue",
+           arrow = arrow(ends = "both", angle = 90,length = unit(.2,"cm")))+
+annotate("segment", x = 17.5, xend = 20.5, y = 620, yend = 620,color = "blue",
+         arrow = arrow(ends = "both", angle = 90,length = unit(.2,"cm")))+
+  annotate(geom = "text", x = 12.8, y = 585, size = 8 ,color = "red" ,label = "Afternoon", hjust = "left")+
+annotate(geom = "text", x = 17.80, y = 635, size = 8 ,color = "red" ,label = "Evening", hjust = "left")
+
+
+
+new_df%>% 
+  ggplot(aes(total_minutes_asleep, total_time_in_bed ))+
+  geom_jitter()+
+  geom_point(color = "blue")+
+  geom_smooth(color = "black")+
+  labs(title = " Total minutes asleep Vs Total time in bed", 
+       x = "Minutes asleep",
+       y = "Time in bed")+
+  theme_get()+
+  annotate(
+    geom = "curve", x = 450, y = 750, color = "red", xend = 400, yend = 433, 
+    curvature = 0.3, arrow = arrow(length = unit(2, "mm")))+
+  
+  annotate(geom = "text", x = 450, y = 750, color = "red" , size = 5,label = "italic(R) ^ 2 == 0.93", hjust = "left",
+           parse = TRUE)
+
+## daily use
+
+daily_usage <- new_df%>%
+  group_by(id) %>%
+  summarize(days_active=sum(n())) %>%
+  mutate(usage = case_when(
+    days_active >= 1 & days_active <= 10 ~ "low use",
+    days_active >= 11 & days_active <= 20 ~ "average use", 
+    days_active >= 21 & days_active <= 31 ~ "high use", 
+  ))
+  
+
+#converting into percentage 
+
+daily_usage_perc <- daily_usage %>%
+ drop_na() %>% 
+  dplyr::count(usage) %>% 
+  dplyr::mutate(perc = n/sum(n)*100)
+
+
+daily_usage_perc %>% 
+  ggplot(aes(reorder(usage, n), n,fill = usage))+
+  geom_col()+
+  geom_text(aes(usage, n, label = paste0( "(", round(perc,1), "%)"),
+                vjust = -.5, hjust = -0.3))+
+  scale_fill_manual(values = c("#66b3ff", "#004080", "#cce0ff"),
+                    labels = c("average use - 11 to 20 days",
+                               "High use - 21 to 31 days",
+                               "Low use - 1 to 10 days"))+
+  
+  theme_pubclean()+
+coord_flip()+
+  theme(axis.text.x=element_blank())
+
+  
+
+## Conclusion and recommendation 
+
+
+#I discovered several insights from my analysis of FitBit Fitness Tracker Data 
+#that can help shape Bellabeat's marketing approach.
+
+#1. Our analysis revealed a robust positive correlation between Total Time in 
+#Bed and Total Minutes Asleep.for Bellabeat users aiming to enhance their sleep 
+#quality, implementing notifications to prompt bedtime could be a beneficial 
+#strategy.
+
+
+#2.The average total steps per day, standing at 7638, falls slightly below 
+#the CDC's recommended benchmark of 10,000 steps. According to CDC research,
+#a higher daily step count is linked to a lower mortality rate, emphasizing 
+#the health benefits associated with increased physical activity, therefore we 
+#suggest setting up articles on our app outlining the advantages of completing
+#that goal and alarming them if they haven't completed the steps
+
+#3.It appears that the majority of users are active from 8 a.m. to 7 p.m. and 
+#are busier at lunch (12 p.m. to 2 p.m.) and in the evening (5 p.m. to 7 p.m.). 
+#I assume that some users go to the gym or go for walks after work. During this 
+#period, Bellabeat can encourage and remind people to go for a walk or run.
+
+                                        #Thank you
+
+
+
+
+
+
+
+
